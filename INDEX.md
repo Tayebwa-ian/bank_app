@@ -376,7 +376,8 @@ Everything is prepared for comprehensive security testing:
 1. ✅ Vulnerabilities identified and documented
 2. ✅ Application containerized and ready to run
 3. ✅ Testing scripts created and ready to use
-4. ✅ Quick reference guides prepared
+4. ✅ phpMyAdmin included for database access
+5. ✅ Quick reference guides prepared
 5. ✅ Exploitation guides written
 
 ### Start Here:

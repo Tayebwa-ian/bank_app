@@ -62,6 +62,15 @@ docker exec -it vbank_mysql mysql -u root -paaa vbank
 - Password: `aaa`
 - Database: `vbank`
 
+### phpMyAdmin Web Interface
+
+- **URL**: http://localhost:8081/
+- **Username**: `root`
+- **Password**: `aaa`
+- **Server**: `mysql`
+
+phpMyAdmin provides a graphical interface to browse and modify the database directly.
+
 ---
 
 ## Vulnerability Analysis & Exploitation
@@ -212,6 +221,7 @@ docker-compose logs -f
 # Specific service
 docker-compose logs -f php
 docker-compose logs -f mysql
+docker-compose logs -f phpmyadmin
 ```
 
 ### Stop Services
@@ -233,6 +243,12 @@ docker exec -it vbank_app bash
 ```bash
 docker exec -it vbank_mysql mysql -u root -paaa vbank
 ```
+
+### Access phpMyAdmin
+Open http://localhost:8081/ in your browser
+- Username: `root`
+- Password: `aaa`
+- Server: `mysql`
 
 ---
 
@@ -380,12 +396,18 @@ bank_app/
 # Check logs
 docker-compose logs
 
+# Check specific service
+docker-compose logs phpmyadmin
+docker-compose logs php
+docker-compose logs mysql
+
 # Rebuild images
 docker-compose build --no-cache
 
 # Check if ports are in use
 lsof -i :80
 lsof -i :3306
+lsof -i :8081
 
 # Remove old containers
 docker-compose down -v

@@ -64,13 +64,16 @@ CVSS: 9.8 (Critical)
 **Ready-to-run Docker setup:**
 - PHP 5.6 Apache container (includes MySQL extension)
 - MySQL 5.5 database container
+- phpMyAdmin (latest) web interface
 - Pre-configured with vulnerable application code
 - Database automatically initialized with test data
 - One command to start: `./setup.sh`
 
 **Credentials Provided:**
 ```
+App URL:      http://localhost/
 Users:        alex (password: 413Xp455) / bob (password: b0BP4S5)
+phpMyAdmin:   http://localhost:8081/
 Database:     root / aaa
 XOR Key:      0x0BADC0DE
 Account Nums: 11111111, 22222222, 33333333

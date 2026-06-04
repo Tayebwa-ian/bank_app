@@ -8,6 +8,7 @@
 | Base URL | http://localhost/ |
 | Login | http://localhost/login.php |
 | Main Page | http://localhost/index.php?page=htbmain |
+| phpMyAdmin | http://localhost:8081/ |
 
 ### Users
 | Username | Password | User ID | Accounts |
@@ -22,6 +23,14 @@ Port: 3306
 User: root
 Password: aaa
 Database: vbank
+```
+
+### phpMyAdmin
+```
+URL: http://localhost:8081/
+User: root
+Password: aaa
+Server: mysql
 ```
 
 ---
@@ -239,6 +248,57 @@ curl -b cookies.txt "http://localhost/index.php?page=htbdetails&account=25217051
 
 ---
 
+## Database Tools & Access
+
+### phpMyAdmin Web Interface
+```
+URL: http://localhost:8081/
+User: root
+Password: aaa
+Server: mysql
+```
+
+**Use phpMyAdmin to**:
+- Browse database tables visually
+- Execute SQL queries directly
+- View user passwords in plain text
+- View all account balances
+- Verify SQL injection results
+- Modify data directly
+
+### Quick Queries in phpMyAdmin
+
+**View All Users & Passwords**:
+```sql
+SELECT id, username, password, name FROM users;
+```
+
+**View All Accounts & Balances**:
+```sql
+SELECT account, owner, curbal, deposit FROM accounts;
+```
+
+**View All Transfers**:
+```sql
+SELECT * FROM transfers ORDER BY time DESC;
+```
+
+**View All Loans**:
+```sql
+SELECT * FROM loans;
+```
+
+### MySQL Command Line Access
+```bash
+# From host
+mysql -h 127.0.0.1 -u root -paaa vbank
+
+# From Docker
+docker exec -it vbank_mysql mysql -u root -paaa vbank
+```
+
+---
+
 ## Docker Commands
 
 ```bash
@@ -251,6 +311,7 @@ docker-compose down
 # View logs
 docker-compose logs -f php
 docker-compose logs -f mysql
+docker-compose logs -f phpmyadmin
 
 # Access containers
 docker exec -it vbank_app bash
@@ -258,6 +319,9 @@ docker exec -it vbank_mysql mysql -u root -paaa vbank
 
 # Restart
 docker-compose restart
+
+# Access phpMyAdmin
+# Open: http://localhost:8081/
 ```
 
 ---

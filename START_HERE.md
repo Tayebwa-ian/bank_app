@@ -106,6 +106,14 @@ Password: aaa
 Database: vbank
 ```
 
+### phpMyAdmin Web Interface
+```
+URL:      http://localhost:8081/
+User:     root
+Password: aaa
+Server:   mysql
+```
+
 ### Account Numbers (for testing)
 ```
 Account 11111111 (XORed: 252170513) - Owner: alex - Balance: 1000

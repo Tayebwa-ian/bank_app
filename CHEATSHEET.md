@@ -1,5 +1,11 @@
 # vBank Quick Reference - Attack Cheat Sheet
 
+**📖 For detailed attack walkthroughs and analysis, see [PENETRATION_TESTING_GUIDE.md](PENETRATION_TESTING_GUIDE.md)**
+
+This cheat sheet contains quick-reference payloads and commands.
+
+---
+
 ## URLs & Credentials
 
 ### Application Access

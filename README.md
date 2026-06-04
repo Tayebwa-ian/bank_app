@@ -23,7 +23,7 @@ This is **Sphinx vBank**, a deliberately vulnerable web application designed for
 
 ```bash
 # Navigate to the vBank directory
-cd /home/passwd/bank_app
+cd bank_app
 
 # Make setup script executable
 chmod +x setup.sh
@@ -75,15 +75,12 @@ phpMyAdmin provides a graphical interface to browse and modify the database dire
 
 ## Vulnerability Analysis & Exploitation
 
-See **[attacks.md](attacks.md)** for comprehensive documentation of:
-- SQL Injection (Authentication Bypass & Data Extraction)
-- Cross-Site Scripting (Stored & Reflected XSS)
+See **[PENETRATION_TESTING_GUIDE.md](PENETRATION_TESTING_GUIDE.md)** for comprehensive documented attacks including:
+- SQL Injection (Authentication Bypass with bypass techniques)
+- Cross-Site Scripting (Stored XSS with real payloads)
 - Remote Code Execution (via preg_replace /e modifier)
 - Request Manipulation & Parameter Tampering
-- Client-Side Validation Bypass
-- Authentication Flaws
-- Local File Inclusion
-- And more...
+- Complete attack workflows with tool usage (Burp Suite, curl, Browser DevTools)
 
 ### Key Information for Testing
 

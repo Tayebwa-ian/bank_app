@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:5.5
+    container_name: vbank_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: aaa
+      MYSQL_DATABASE: vbank
+      MYSQL_USER: vbank
+      MYSQL_PASSWORD: vbank123
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./vbank.sql:/docker-entrypoint-initdb.d/vbank.sql
+      - mysql_data:/var/lib/mysql
+    networks:
+      - vbank_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 10s
+      retries: 5
+
+  php:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vbank_app
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "80:80"
+    volumes:
+      - ./htdocs:/var/www/html
+      - ./etc:/var/www/etc
+      - ./pages:/var/www/pages
+    environment:
+      MYSQL_SERVER: mysql
+      MYSQL_USER: root
+      MYSQL_PASSWORD: aaa
+      MYSQL_DB: vbank
+    networks:
+      - vbank_network
+
+volumes:
+  mysql_data:
+
+networks:
+  vbank_network:
+    driver: bridge

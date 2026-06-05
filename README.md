@@ -75,12 +75,10 @@ phpMyAdmin provides a graphical interface to browse and modify the database dire
 
 ## Vulnerability Analysis & Exploitation
 
-See **[PENETRATION_TESTING_GUIDE.md](PENETRATION_TESTING_GUIDE.md)** for comprehensive documented attacks including:
-- SQL Injection (Authentication Bypass with bypass techniques)
-- Cross-Site Scripting (Stored XSS with real payloads)
-- Remote Code Execution (via preg_replace /e modifier)
-- Request Manipulation & Parameter Tampering
-- Complete attack workflows with tool usage (Burp Suite, curl, Browser DevTools)
+Detailed, manual walkthroughs for each vulnerability can be found in:
+*   **[PENETRATION_TESTING_GUIDE.md](PENETRATION_TESTING_GUIDE.md)**: Manual guides for SQLi (Auth Bypass, Password Resets, Account Creation), XSS, RCE, and Request Manipulation.
+*   **[DATABASE_DUMP_GUIDE.md](DATABASE_DUMP_GUIDE.md)**: A specialized manual guide on exfiltrating the entire database starting from zero knowledge.
+*   **[CHEATSHEET.md](CHEATSHEET.md)**: Quick reference for payloads and account XOR keys.
 
 ### Key Information for Testing
 
@@ -117,7 +115,11 @@ python3 test_exploits.py
 # Run specific test
 python3 test_exploits.py --test sql_injection_login
 python3 test_exploits.py --test stored_xss
+python3 test_exploits.py --test loan_tampering
+python3 test_exploits.py --test validation_bypass
 python3 test_exploits.py --test account_enumeration
+python3 test_exploits.py --test sql_injection_transfer
+python3 test_exploits.py --test rce
 
 # Verbose output
 python3 test_exploits.py --verbose
@@ -486,4 +488,3 @@ For questions about specific vulnerabilities, refer to [attacks.md](attacks.md) 
 **Last Updated**: 2026-06-04  
 
 **Remember**: With great power comes great responsibility. Use these skills ethically and legally.
-

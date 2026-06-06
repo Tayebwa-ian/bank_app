@@ -256,9 +256,9 @@ Open http://localhost:8081/ in your browser
 |---|---|---|---|---|---|
 | 1 | SQL Injection (Auth) | login.php:16 | Critical | CWE-89 | A03:2021 |
 | 2 | SQL Injection (Transfer) | htbtransfer.page:39 | Critical | CWE-89 | A03:2021 |
-| 3 | RCE via /e modifier | htbdetails.page:99 | Critical | CWE-95 | A03:2021 |
+| 3 | RCE via /e modifier | htbdetails.page:56 | Critical | CWE-95 | A03:2021 |
 | 4 | Stored XSS | htbdetails.page:45 | High | CWE-79 | A03:2021 |
-| 5 | Loan Amount Tampering | htbloanconf.page:31 | High | CWE-20 | A04:2021 |
+| 5 | Loan Amount Tampering | htbloanconf.page | High | CWE-20 | A04:2021 |
 | 6 | Client-Side Validation Bypass | htb.js | High | CWE-602 | A05:2021 |
 | 7 | Plain Text Passwords | users table | High | CWE-256 | A02:2021 |
 | 8 | No CSRF Protection | All forms | High | CWE-352 | A01:2021 |
@@ -478,12 +478,7 @@ docker stats
 
 ## Support & Questions
 
-For questions about specific vulnerabilities, refer to [attacks.md](attacks.md) or the file references provided in this README.
-
----
-
-**Author**: Security Training Team  
-**Purpose**: Educational Security Testing  
-**Last Updated**: 2026-06-04  
+**Author**: Ian Tayebwa    
+**Email**: tayebwaian0@gmail.com  
 
 **Remember**: With great power comes great responsibility. Use these skills ethically and legally.

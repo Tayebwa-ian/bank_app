@@ -95,7 +95,7 @@ function errorHandler($errno, $errstr, $errfile, $errline, $errcontext) {
 		case E_COMPILE_ERROR:
 		case E_WARNING:
 			global $query;
-			if (eregi('^(sql)$', $errstr)) {
+			if (preg_match('/^(sql)$/i', $errstr)) {
 				$MYSQL_ERRNO = mysql_errno();
 				$MYSQL_ERROR = mysql_error();
 				$errstr = "MySQL error: $MYSQL_ERRNO : $MYSQL_ERROR";
@@ -103,6 +103,7 @@ function errorHandler($errno, $errstr, $errfile, $errline, $errcontext) {
 				$query = NULL;
 			} // if
 			$errorstring = "<p>Fatal Error: $errstr ($errno).</p>\n";
+			if (!isset($_SESSION['error'])) $_SESSION['error'] = "";
 			$_SESSION['error'].= $errorstring;
 		break;
 		default:

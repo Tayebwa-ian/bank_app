@@ -77,7 +77,6 @@ phpMyAdmin provides a graphical interface to browse and modify the database dire
 
 Detailed, manual walkthroughs for each vulnerability can be found in:
 *   **[PENETRATION_TESTING_GUIDE.md](PENETRATION_TESTING_GUIDE.md)**: Manual guides for SQLi (Auth Bypass, Password Resets, Account Creation), XSS, RCE, and Request Manipulation.
-*   **[DATABASE_DUMP_GUIDE.md](DATABASE_DUMP_GUIDE.md)**: A specialized manual guide on exfiltrating the entire database starting from zero knowledge.
 *   **[CHEATSHEET.md](CHEATSHEET.md)**: Quick reference for payloads and account XOR keys.
 
 ### Key Information for Testing
@@ -257,9 +256,9 @@ Open http://localhost:8081/ in your browser
 |---|---|---|---|---|---|
 | 1 | SQL Injection (Auth) | login.php:16 | Critical | CWE-89 | A03:2021 |
 | 2 | SQL Injection (Transfer) | htbtransfer.page:39 | Critical | CWE-89 | A03:2021 |
-| 3 | RCE via /e modifier | htbdetails.page:56 | Critical | CWE-95 | A03:2021 |
+| 3 | RCE via /e modifier | htbdetails.page:99 | Critical | CWE-95 | A03:2021 |
 | 4 | Stored XSS | htbdetails.page:45 | High | CWE-79 | A03:2021 |
-| 5 | Loan Amount Tampering | htbloanconf.page | High | CWE-20 | A04:2021 |
+| 5 | Loan Amount Tampering | htbloanconf.page:31 | High | CWE-20 | A04:2021 |
 | 6 | Client-Side Validation Bypass | htb.js | High | CWE-602 | A05:2021 |
 | 7 | Plain Text Passwords | users table | High | CWE-256 | A02:2021 |
 | 8 | No CSRF Protection | All forms | High | CWE-352 | A01:2021 |

